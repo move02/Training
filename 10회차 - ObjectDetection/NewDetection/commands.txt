@@ -1,0 +1,13 @@
+
+
+# training 시키기 
+python train.py --logtostderr --train_dir=training/ \
+--pipeline_config_path=training/ssd_inception_v2_coco.config
+
+
+# training 완료 후 checkpoint 보고 모델 만들기
+# --trained_checkpoint_prefix 옵션에는 모델을 만들 부분의 체크포인트가 들어감.
+python export_inference_graph.py \
+--input_type image_tensor --pipeline_config_path training/ssd_inception_v2_coco.config \
+--trained_checkpoint_prefix training/model.ckpt-30014 \
+--output_directory trained-inference-graphs/output_inference_graph_v1.pb

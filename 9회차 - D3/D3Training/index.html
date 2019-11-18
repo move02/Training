@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>SocialData Visualize using D3.js</title>
+
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3-request.v1.min.js"></script>
+    <script src="https://d3js.org/d3-path.v1.min.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-tip/0.9.1/d3-tip.js"></script>
+    <link rel="stylesheet" href="./js/radar-chart.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="./datepicker/bootstrap-datepicker.css">
+    <script src="./js/jquery-1.12.4.min.js"></script>
+    <script src="./datepicker/bootstrap-datepicker.js"></script>
+    <script src="./datepicker/bootstrap-datepicker.ko.js"></script>
+
+    <style>
+        div.row {
+            display: flex;
+        }
+
+        div.my-container {
+            margin-left: 150px;
+        }
+
+        .d3-tip {
+            font-size: 14px;
+            transition: 0.3s opacity linear, 0.3s transform linear;
+            background-color: rgba(#fff, 0.7);
+            padding: 10px 15px;
+            transform: translateY(-10px);
+            color: #333;
+            text-align: center;
+
+            p {
+                margin: 0;
+                padding: 0;
+            }
+
+            &.is-active {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .d3-tip__label {
+            font-weight: bold;
+        }
+
+        label {
+            margin-left: 30px;
+        }
+
+        .search-input {
+            margin-left: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header" style="margin-bottom:30px;">
+            <nav class="navbar navbar-dark bg-dark">
+                <a class="navbar-brand" href="/move02/post/">
+                    <img src="./assets/dslogo2.png" height="30" class="d-inline-block align-top" alt="">
+                </a>
+            </nav>
+        </div>
+        <div id="search-line">
+            <form action="#" autocomplete="off" class="form form-inline">
+                <input type="hidden" autocomplete="off">
+                <label for="keyword">키워드</label>
+                <input autocomplete="off" type="text" name="keyword" id="keyword"
+                    class="form-control col-md-2 search-input">
+                <label for="source">채널</label>
+                <select name="source" id="source" class="form-control search-input">
+                    <option value="blog">블로그</option>
+                    <option value="news">뉴스</option>
+                    <option value="community" selected>커뮤니티</option>
+                    <option value="insta">인스타그램</option>
+                </select>
+                <label for="start">기간</label>
+                <input autocomplete="off" type="text" name="start" id="start" class="form-control col-md-2 search-input"
+                    placeholder="검색 시작일">
+                <input autocomplete="off" type="text" name="end" id="end" class="form-control col-md-2 search-input"
+                    placeholder="검색 종료일">
+                <button type="button" id="request" class="btn btn-primary mb-2 offset-md-1">검색</button>
+            </form>
+        </div>
+    </div>
+    <div class="my-container">
+        <div class="loading" style="display : none;">
+            <img src="./assets/loading.gif" alt="" />
+        </div>
+        <div id="chart-section" class="section" style="margin-top:70px;">
+            <div class="row">
+                <div id="tree-chart"></div>
+                <div class="extras">
+                    <div id="radar-chart" class="justify-center">
+                        <h5 id="extra-heading1" class="headings"></h5>
+                    </div>
+                    <hr>
+                    <div id="half-pie-chart" class="justify-center" style="margin-top: 20px;">
+                        <h5 id="extra-heading2" class="headings"></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/radar-chart.js"></script>
+    <script>
+        // read json data
+        function requestData(keyword, start, end, source) {
+            // show loading bar
+            $(".loading").css("display", "block");
+            $("h5.headings").text("");
+            $("#chart-section").css("display", "none");
+
+            var url = "http://localhost:8080/api/result?keyword=" + keyword + "&start=" + start + "&end=" + end +
+                "&source=" + source;
+            console.log("request url : " + url);
+            d3.request(url)
+                .mimeType("text/json")
+                .get(function (result) {
+                    d3.select("#tree-chart").select("svg").remove();
+                    d3.select("#radar-chart").select("svg").remove();
+                    d3.select("#half-pie-chart").select("svg").remove();
+                    d3.select("#radar-chart").select("#extra-heading1").text("");
+
+                    // set the dimensions and margins of the graph
+                    var width = 680;
+                    var height = 700;
+
+                    var globe = null;
+
+                    // append the svg object to the body of the page
+                    var svg = d3.select("#tree-chart")
+                        .append("svg")
+                        .attr("width", width)
+                        .attr("height", height)
+                        .append("g")
+                        .attr("transform", "translate(40,0)")
+                        .style("padding", "10px"); // bit of margin on the left = 40
+
+                    var data = JSON.parse(result.response);
+
+                    // hide loading bar
+                    $(".loading").css("display", "none");
+                    $("#chart-section").css("display", "block");
+
+                    if (data.msg != null) {
+                        alert(msg);
+                        return;
+                    }
+
+                    // Create the cluster layout:
+                    var cluster = d3.cluster()
+                        .size([height, width - 100]); // 100 is the margin I will have on the right side
+
+                    // Give the data to this cluster layout:
+                    var root = d3.hierarchy(data, function (d) {
+                        globe = d;
+                        return d["childList"];
+                    });
+                    cluster(root);
+
+
+                    // Add the links between nodes:
+                    svg.selectAll('path')
+                        .data(root.descendants().slice(1))
+                        .enter()
+                        .append('path')
+                        .attr("d", function (d) {
+                            return "M" + (d.y - 40) + "," + d.x +
+                                "C" + (d.parent.y + 50) + "," + d.x +
+                                " " + (d.parent.y + 150) + "," + d.parent
+                                .x // 50 and 150 are coordinates of inflexion, play with it to change links shape
+                                +
+                                " " + d.parent.y + "," + d.parent.x;
+                        })
+                        .style("fill", 'none')
+                        .attr("stroke", '#ccc')
+                        .style("opacity", 0)
+                        .transition()
+                        .delay(function (d, i) {
+                            return 24 * i;
+                        })
+                        .duration(300)
+                        .style("opacity", 1)
+
+
+                    svg.selectAll("g")
+                        .data(root.descendants())
+                        .enter()
+                        .append("g")
+                        .attr("transform", function (d) {
+                            return "translate(" + (d.y - 40) + "," + d.x + ")"
+                        })
+                        .attr("stroke", "black")
+                        .style("stroke-width", 1)
+                        .on("mouseover", function (d) {
+                            d3.select(this).attr("stroke", "green")
+                                .style("cursor", "pointer");
+
+                            // console.log(d3.select(this));
+
+                            var x = d3.select(this).node().transform.baseVal.consolidate().matrix.e;
+                            var y = d3.select(this).node().transform.baseVal.consolidate().matrix.f;
+                            tooltip
+                                .attr('x', x - 40)
+                                .attr('y', y)
+                                .style('display', 'block')
+                                .text("score : " + d.data.score);
+                        })
+                        .on("mouseout", function () {
+                            d3.select(this).attr("stroke", "black")
+                                .style("stroke-width", 1)
+                                .style("cursor", "default");
+
+                            tooltip
+                                .style('display', 'none')
+                                .text("");
+                        })
+                        .on("click", function (d) {
+                            $("text[stroke='blue']").attr("stroke", "black").attr("stroke-width", 1);
+
+                            d3.select(this).select("text").attr("stroke", "blue");
+
+                            $("h5#extra-heading1").text(d.data.label + " - 속성");
+                            makeRadar(d);
+                            makeHalfPie(d);
+                        })
+                        .style("opacity", 0)
+                        .transition()
+                        .delay(function (d, i) {
+                            return 24 * i;
+                        })
+                        .duration(300)
+                        .style("opacity", 1)
+
+                    svg.selectAll("g").append("text")
+                        .attr("dy", 0)
+                        .attr("x", 0)
+                        .text(function (d, i) {
+                            if (i == 0) {
+                                return keyword;
+                            } else {
+                                return d.data.label;
+                            }
+                        });
+
+                    const tooltip = svg.append("text")
+                        .attr("class", "mytooltip")
+                        .attr('x', 0)
+                        .attr('y', 0)
+                        .attr("text-anchor", "middle")
+                        .attr("stroke-width", 1)
+                        .attr("stroke", "black")
+                        .attr("dy", "0.35em")
+                        .style('display', 'none')
+                        .style("font-size", "12px");
+                });
+        }
+
+        // requestData("아이폰", "20190101", "20191111", "community");
+    </script>
+    <script>
+        // event handlers for extra chart
+
+        //////////////////////// RadarChart //////////////////////////////
+        function makeRadar(chartData) {
+            //////////////////////////////////////////////////////////////
+            //////////////////////// Set-Up //////////////////////////////
+            //////////////////////////////////////////////////////////////
+            var margin = {
+                    top: 50,
+                    right: 80,
+                    bottom: 50,
+                    left: 80
+                },
+                width = Math.min(700, window.innerWidth / 4) - margin.left - margin.right,
+                height = Math.min(width, window.innerHeight - margin.top - margin.bottom);
+
+            //////////////////////////////////////////////////////////////
+            ////////////////////////// Data //////////////////////////////
+            //////////////////////////////////////////////////////////////
+
+            var data = makeDataForRadar(chartData.data);
+
+            //////////////////////////////////////////////////////////////
+            ////// First example /////////////////////////////////////////
+            ///// (not so much options) //////////////////////////////////
+            //////////////////////////////////////////////////////////////
+            var radarChartOptions = {
+                w: 250,
+                h: 300,
+                margin: margin,
+                levels: 6,
+                roundStrokes: false,
+                color: d3.scaleOrdinal().range(["#26AF32", "#762712", "#2a2fd4"]),
+                legend: {
+                    title: data.name,
+                    translateX: 100,
+                    translateY: 20
+                },
+                format: '.2f'
+            };
+
+            // Draw the chart, get a reference the created svg element :
+            let svg_radar1 = RadarChart("#radar-chart", data, radarChartOptions);
+        }
+        //////////////////////// End- RadarChart ////////////////////////////
+
+        function makeDataForRadar(data) {
+            var dataObj = [{
+                name: data.label + " - top10 Keyword",
+                axes: [],
+                color: '#26AF32'
+            }];
+
+            var count = 0;
+            var min = 50;
+
+            for (var i = 0; i < data.children.length; i++) {
+                var temp = data.children[i].frequency * data.children[i].score;
+                if (data.children[i].score == 0) {
+                    temp = 0.000001 * data.children[i].frequency;
+                }
+
+                if (temp < 1) {
+                    temp = 1 + temp;
+                }
+
+                if (temp < min) {
+                    min = temp;
+                }
+
+                // console.log("term : " + data.children[i].label + " / freq : " + data.children[i].frequency + " / score : " + data.children[i].score + " / temp : " + temp);
+
+            }
+
+
+            for (d of data.children) {
+                if (count > 10) {
+                    break;
+                }
+
+                var tempVal = (d.score * d.frequency);
+
+
+                if (d.score == 0) {
+                    tempVal = 0.000001 * d.frequency;
+                }
+
+                if (tempVal < 1) {
+                    tempVal = 1 + tempVal;
+                }
+
+                console.log("term : " + d.label + " / freq : " + d.frequency + " / score : " + d.score + " / temp : " +
+                    tempVal + " / min : " + min);
+
+
+                dataObj[0].axes.push({
+                        axis: d.label + "(" + polarityKo(d.polarity) + ")",
+                        value: Math.log(tempVal + min)
+                    }
+                    // {axis: d.label, value: d.score}
+                )
+
+                count++;
+            }
+
+            return dataObj;
+        }
+
+        //////////////////////// HalfPieChart ////////////////////////////
+        function makeHalfPie(chartData) {
+            d3.select("#half-pie-chart").select("object").remove();
+
+            $("h5#extra-heading2").text(chartData.data.label + " - 감성");
+            var $container = $('#half-pie-chart'),
+                width = $container.width(),
+                height = width / 2,
+                r = width / 2,
+                ir = r / 2,
+                pi = Math.PI;
+
+            var data = makeDataForHalfPie(chartData.data);
+
+            //pie structure
+            var pie = d3.pie();
+            pie.padAngle(.02)
+                .sort(null)
+                .value(function (d) {
+                    return d.number;
+                })
+                .startAngle(-90 * (pi / 180))
+                .endAngle(90 * (pi / 180));
+
+            //tooltip div, content dynamically changed
+            var tip = d3.tip()
+                .attr('class', 'd3-tip')
+                .offset([-10, -10])
+                .html(function (d) {
+                    return '<p class="d3-tip__label">' + d.data.label + '</p><p>' + d.data.number + '</p>';
+                });
+
+            var arc = d3.arc().outerRadius(r - 10).innerRadius(ir - 5),
+                arcHover = d3.arc().outerRadius(r).innerRadius(ir);
+
+            /* ------------------ drawing ------------------------- */
+            /* ----------------------------------------------------- */
+            //draw svg element
+            var object = d3.select('#half-pie-chart').append('object')
+                .attr('width', '100%')
+                .attr('height', 'auto')
+                .style('display', 'block')
+                .style('position', 'relative')
+                .style('padding-top', height + 'px');
+
+            var vis = object.append('svg')
+                .data([data])
+                .attr('width', '100%')
+                .attr('height', '100%')
+                .attr('viewBox', '0 0 ' + width + ' ' + height)
+                .attr('preserveAspectRatio', 'xMinYMin')
+                .style('position', 'absolute')
+                .style('top', '0')
+                .style('left', '0')
+                .append('g')
+                .attr('transform', 'translate(' + r + ',' + r + ')');
+
+            //init tooltips
+            vis.call(tip);
+
+            //draw slices
+            var arcs = vis.selectAll('g.slice')
+                .data(pie)
+                .enter()
+                .append('g')
+                .attr('class', 'slice');
+
+            arcs.on('mouseover', function (d) {
+                    tip.show(d, this);
+                    $('.d3-tip').addClass('is-active');
+                })
+                .on('mouseout', function (d) {
+                    tip.hide(d, this);
+                    $('.d3-tip').removeClass('is-active');
+                });
+
+            //draw arcs
+            arcs
+                .append('path')
+                .attr('fill', function (d, i) {
+                    return data[i].color;
+                })
+                .attr('d', arc)
+                .on('mouseover', function (d, i) {
+                    d3.select(this)
+                        .transition()
+                        .duration(500)
+                        .attr('d', arcHover);
+                })
+                .on('mouseout', function (d) {
+                    d3.select(this)
+                        .transition()
+                        .duration(500)
+                        .attr('d', arc);
+                });
+
+        }
+        ///////////////////// End- HalfPieChart //////////////////////////
+
+        function makeDataForHalfPie(data) {
+            var arr = [];
+
+            var count = 0;
+            var pObj = {
+                label: data.label + " - 긍정",
+                number: data.positive,
+                color: '#3aaa35'
+            };
+
+            var nObj = {
+                label: data.label + " - 부정",
+                number: data.negative,
+                color: '#be1522'
+            };
+
+            arr = [pObj, nObj];
+
+            return arr;
+        }
+
+        function polarityKo(polarity) {
+            if (polarity == "positive") {
+                return "긍정";
+            } else if (polarity == "negative") {
+                return "부정";
+            } else if (polarity == "neutral") {
+                return "중립";
+            } else {
+                return "기타";
+            }
+        }
+    </script>
+    <script>
+        // submit user's request
+        $("#request").click(function () {
+            var keyword = $("#keyword").val();
+            var start = $("#start").val();
+            var end = $("#end").val();
+            var source = $("#source").val();
+
+            requestData(keyword, start, end, source);
+        })
+    </script>
+    <!-- datepicker -->
+    <script>
+        $(function () {
+            $('#start').datepicker({
+                format: "yyyymmdd", //데이터 포맷 형식(yyyy : 년 mm : 월 dd : 일 )
+                startDate: "-3y", //달력에서 선택 할 수 있는 가장 빠른 날짜. 이전으로는 선택 불가능 ( d : 일 m : 달 y : 년 w : 주)
+                endDate: "+1d", //달력에서 선택 할 수 있는 가장 느린 날짜. 이후로 선택 불가 ( d : 일 m : 달 y : 년 w : 주)
+                autoclose: true, //사용자가 날짜를 클릭하면 자동 캘린더가 닫히는 옵션
+                calendarWeeks: false, //캘린더 옆에 몇 주차인지 보여주는 옵션 기본값 false 보여주려면 true
+                clearBtn: true, //날짜 선택한 값 초기화 해주는 버튼 보여주는 옵션 기본값 false 보여주려면 true
+                disableTouchKeyboard: false, //모바일에서 플러그인 작동 여부 기본값 false 가 작동 true가 작동 안함.
+                immediateUpdates: false, //사용자가 보는 화면으로 바로바로 날짜를 변경할지 여부 기본값 :false 
+                multidate: false, //여러 날짜 선택할 수 있게 하는 옵션 기본값 :false 
+                multidateSeparator: ",", //여러 날짜를 선택했을 때 사이에 나타나는 글짜 2019-05-01,2019-06-01
+                templates: {
+                    leftArrow: '&laquo;',
+                    rightArrow: '&raquo;'
+                }, //다음달 이전달로 넘어가는 화살표 모양 커스텀 마이징 
+                showWeekDays: true, // 위에 요일 보여주는 옵션 기본값 : true
+                title: "시작일", //캘린더 상단에 보여주는 타이틀
+                todayHighlight: true, //오늘 날짜에 하이라이팅 기능 기본값 :false 
+                toggleActive: true, //이미 선택된 날짜 선택하면 기본값 : false인경우 그대로 유지 true인 경우 날짜 삭제
+                weekStart: 0, //달력 시작 요일 선택하는 것 기본값은 0인 일요일 
+                language: "ko" //달력의 언어 선택, 그에 맞는 js로 교체해줘야한다.
+
+            }); //datepicker end
+
+
+            $('#end').datepicker({
+                format: "yyyymmdd", //데이터 포맷 형식(yyyy : 년 mm : 월 dd : 일 )
+                startDate: '-3y', //달력에서 선택 할 수 있는 가장 빠른 날짜. 이전으로는 선택 불가능 ( d : 일 m : 달 y : 년 w : 주)
+                endDate: '+1d', //달력에서 선택 할 수 있는 가장 느린 날짜. 이후로 선택 불가 ( d : 일 m : 달 y : 년 w : 주)
+                autoclose: true, //사용자가 날짜를 클릭하면 자동 캘린더가 닫히는 옵션
+                calendarWeeks: false, //캘린더 옆에 몇 주차인지 보여주는 옵션 기본값 false 보여주려면 true
+                clearBtn: true, //날짜 선택한 값 초기화 해주는 버튼 보여주는 옵션 기본값 false 보여주려면 true
+                disableTouchKeyboard: false, //모바일에서 플러그인 작동 여부 기본값 false 가 작동 true가 작동 안함.
+                immediateUpdates: false, //사용자가 보는 화면으로 바로바로 날짜를 변경할지 여부 기본값 :false 
+                multidate: false, //여러 날짜 선택할 수 있게 하는 옵션 기본값 :false 
+                multidateSeparator: ",", //여러 날짜를 선택했을 때 사이에 나타나는 글짜 2019-05-01,2019-06-01
+                templates: {
+                    leftArrow: '&laquo;',
+                    rightArrow: '&raquo;'
+                }, //다음달 이전달로 넘어가는 화살표 모양 커스텀 마이징 
+                showWeekDays: true, // 위에 요일 보여주는 옵션 기본값 : true
+                title: "종료일", //캘린더 상단에 보여주는 타이틀
+                todayHighlight: true, //오늘 날짜에 하이라이팅 기능 기본값 :false 
+                toggleActive: true, //이미 선택된 날짜 선택하면 기본값 : false인경우 그대로 유지 true인 경우 날짜 삭제
+                weekStart: 0, //달력 시작 요일 선택하는 것 기본값은 0인 일요일 
+                language: "ko" //달력의 언어 선택, 그에 맞는 js로 교체해줘야한다.
+
+            }); //datepicker end
+        }); //ready end
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,26 @@
+<annotation>
+	<folder>cat</folder>
+	<filename>56.jpeg</filename>
+	<path>C:\training\pyworkspace\ObjectDetection\cimgs\cat\56.jpeg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>3028</width>
+		<height>2128</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>cat-face</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>558</xmin>
+			<ymin>231</ymin>
+			<xmax>1826</xmax>
+			<ymax>1759</ymax>
+		</bndbox>
+	</object>
+</annotation>

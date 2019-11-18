@@ -1,0 +1,38 @@
+<annotation>
+	<folder>dataset</folder>
+	<filename>000033.jpeg</filename>
+	<path>C:\Users\USER\Anaconda3\envs\YOLOdark\data\dataset\000033.jpeg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>4000</width>
+		<height>3000</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>cat</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1572</xmin>
+			<ymin>796</ymin>
+			<xmax>2804</xmax>
+			<ymax>2328</ymax>
+		</bndbox>
+	</object>
+<object>
+		<name>cat-face</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>1814</xmin>
+			<ymin>815</ymin>
+			<xmax>2820</xmax>
+			<ymax>1654</ymax>
+		</bndbox>
+	</object>
+</annotation>
